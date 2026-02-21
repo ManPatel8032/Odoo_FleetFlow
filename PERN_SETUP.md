@@ -82,8 +82,7 @@ docker-compose up -d
 
 # Services will be available at:
 # - Frontend: http://localhost:3000
-# - Backend API: http://localhost:5000
-# - Database Admin (Adminer): http://localhost:8081
+# - Backend localhost:8081
 # - PostgreSQL: localhost:5432
 ```
 

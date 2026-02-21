@@ -1,0 +1,196 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String?   // Optional for OAuth users
+  role          Role      @default(DRIVER)
+  avatar        String?
+  phone         String?
+  address       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  drivers       Driver?
+  trips         Trip[]
+  maintenanceLogs MaintenanceLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Driver {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  licenseNumber String    @unique
+  licenseExpiry DateTime
+  totalTrips    Int       @default(0)
+  totalDistance Float     @default(0) // in km
+  activeTrips   Int       @default(0)
+  rating        Float     @default(5.0)
+  status        DriverStatus @default(ACTIVE)
+  joinDate      DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trips         Trip[]
+  assignedVehicles VehicleAssignment[]
+
+  @@index([licenseNumber])
+  @@index([status])
+}
+
+model Vehicle {
+  id            String    @id @default(cuid())
+  plateNumber   String    @unique
+  vin           String    @unique
+  make          String
+  model         String
+  year          Int
+  color         String?
+  type          String
+  capacity      Int       // in kg
+  fuelLevel     Float     @default(100) // percentage
+  mileage       Float     @default(0) // in km
+  status        VehicleStatus @default(ACTIVE)
+  nextServiceDate DateTime
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  trips         Trip[]
+  maintenanceLogs MaintenanceLog[]
+  assignments   VehicleAssignment[]
+
+  @@index([plateNumber])
+  @@index([status])
+}
+
+model VehicleAssignment {
+  id            String    @id @default(cuid())
+  vehicleId     String
+  driverId      String
+  assignedAt    DateTime  @default(now())
+  unassignedAt  DateTime?
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver        Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, driverId, unassignedAt])
+  @@index([vehicleId])
+  @@index([driverId])
+}
+
+model Trip {
+  id            String    @id @default(cuid())
+  tripNumber    String    @unique
+  vehicleId     String
+  driverId      String
+  
+  // Location and cargo
+  originAddress String
+  originLat     Float?
+  originLng     Float?
+  destAddress   String
+  destLat       Float?
+  destLng       Float?
+  cargoWeight   Float     // in kg
+  
+  // Status and timing
+  status        TripStatus @default(SCHEDULED)
+  startTime     DateTime
+  estimatedEndTime DateTime?
+  actualEndTime DateTime?
+  distance      Float?    // in km, calculated
+  
+  // Fuel and cost
+  fuelUsed      Float?    // in liters
+  fuelCost      Float?    // calculated
+  totalCost     Float?    // calculated
+  
+  // Metadata
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driver        User      @relation(fields: [driverId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([status])
+  @@index([startTime])
+}
+
+model MaintenanceLog {
+  id            String    @id @default(cuid())
+  vehicleId     String
+  userId        String    // Who logged it
+  issueType     String    // "oil change", "tire replacement", "engine issue", etc.
+  description   String
+  cost          Float
+  status        MaintenanceStatus @default(PENDING)
+  dueDate       DateTime
+  completedDate DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  vehicle       Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  loggedBy      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  DRIVER
+}
+
+enum DriverStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+  SUSPENDED
+}
+
+enum VehicleStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  RETIRED
+}
+
+enum TripStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum MaintenanceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}

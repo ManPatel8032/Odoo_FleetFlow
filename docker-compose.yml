@@ -1,0 +1,74 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fleetflow_db
+    environment:
+      POSTGRES_USER: fleetflow
+      POSTGRES_PASSWORD: fleetflow_password
+      POSTGRES_DB: fleetflow
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - fleetflow_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleetflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  adminer:
+    image: adminer  
+    container_name: adminer
+    restart: always
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fleetflow_network
+
+  backend:
+    build: ./backend
+    container_name: fleetflow_api
+    environment:
+      DATABASE_URL: "postgresql://fleetflow:fleetflow_password@postgres:5432/fleetflow"
+      JWT_SECRET: "your-super-secret-jwt-key-change-in-production"
+      NODE_ENV: "development"
+      PORT: 5000
+      FRONTEND_URL: "http://localhost:3000"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fleetflow_network
+    volumes:
+      - ./backend/src:/app/src
+    command: npm run dev
+
+  frontend:
+    build: ./frontend
+    container_name: fleetflow_ui
+    environment:
+      REACT_APP_API_URL: "http://localhost:5000/api"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - fleetflow_network
+    volumes:
+      - ./frontend/src:/app/src
+    command: npm start
+
+volumes:
+  postgres_data:
+
+networks:
+  fleetflow_network:
+    driver: bridge

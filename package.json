@@ -1,0 +1,13 @@
+{
+  "name": "fleetflow",
+  "version": "1.0.0",
+  "description": "FleetFlow - Fleet Management System",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
+    "start": "docker-compose up",
+    "stop": "docker-compose down",
+    "dev": "docker-compose up -d"
+  }
+}
+}

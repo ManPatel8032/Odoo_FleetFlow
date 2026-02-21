@@ -1,0 +1,16 @@
+.login-page {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 2rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.login-page form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-page label {
+  margin-bottom: 1rem;
+}

@@ -101,6 +101,69 @@ class ApiClient {
     return this.client.patch(`/trips/${id}/status`, { status, ...additionalData });
   }
 
+  // Driver endpoints
+  getDrivers(filters?: { status?: string }) {
+    return this.client.get('/drivers', { params: filters });
+  }
+
+  getDriverById(id: string) {
+    return this.client.get(`/drivers/${id}`);
+  }
+
+  createDriver(data: any) {
+    return this.client.post('/drivers', data);
+  }
+
+  updateDriver(id: string, data: any) {
+    return this.client.patch(`/drivers/${id}`, data);
+  }
+
+  updateDriverStatus(id: string, status: string) {
+    return this.client.patch(`/drivers/${id}/status`, { status });
+  }
+
+  deleteDriver(id: string) {
+    return this.client.delete(`/drivers/${id}`);
+  }
+
+  checkLicenseExpiry() {
+    return this.client.get('/drivers/license-expiry');
+  }
+
+  // Maintenance endpoints
+  getMaintenanceLogs(filters?: { status?: string; vehicleId?: string }) {
+    return this.client.get('/maintenance', { params: filters });
+  }
+
+  getMaintenanceById(id: string) {
+    return this.client.get(`/maintenance/${id}`);
+  }
+
+  createMaintenance(data: any) {
+    return this.client.post('/maintenance', data);
+  }
+
+  updateMaintenance(id: string, data: any) {
+    return this.client.patch(`/maintenance/${id}`, data);
+  }
+
+  updateMaintenanceStatus(id: string, data: any) {
+    return this.client.patch(`/maintenance/${id}/status`, typeof data === 'string' ? { status: data } : data);
+  }
+
+  deleteMaintenance(id: string) {
+    return this.client.delete(`/maintenance/${id}`);
+  }
+
+  // Analytics endpoints
+  getAnalytics() {
+    return this.client.get('/analytics');
+  }
+
+  exportReport(type: 'vehicles' | 'drivers' | 'trips') {
+    return this.client.get(`/analytics/export?type=${type}`, { responseType: 'blob' });
+  }
+
   // Dashboard endpoints
   getDashboardStats() {
     return this.client.get('/dashboard/stats');

@@ -6,6 +6,9 @@ import authRoutes from './routes/auth';
 import vehicleRoutes from './routes/vehicles';
 import tripRoutes from './routes/trips';
 import dashboardRoutes from './routes/dashboard';
+import maintenanceRoutes from './routes/maintenance';
+import driverRoutes from './routes/drivers';
+import analyticsRoutes from './routes/analytics';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,6 +26,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/drivers', driverRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

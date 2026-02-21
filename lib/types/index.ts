@@ -1,5 +1,5 @@
 // User and Authentication Types
-export type UserRole = "admin" | "manager" | "driver";
+export type UserRole = "ADMIN" | "MANAGER" | "DRIVER";
 
 export interface User {
   id: string;

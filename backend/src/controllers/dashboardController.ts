@@ -32,11 +32,22 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const trips = await prisma.trip.findMany({
       include: { vehicle: true },
     });
+    const scheduledTrips = await prisma.trip.count({ where: { status: 'SCHEDULED' } });
 
     const totalDistance = trips.reduce((sum, t) => sum + (t.distance || 0), 0);
     const totalFuelCost = trips.reduce((sum, t) => sum + (t.fuelCost || 0), 0);
     const completedTripsData = trips.filter((t) => t.status === 'COMPLETED');
     const avgTripDistance = completedTripsData.length > 0 ? totalDistance / completedTripsData.length : 0;
+
+    // Pending cargo (total cargo weight of scheduled trips)
+    const pendingCargo = trips
+      .filter((t) => t.status === 'SCHEDULED')
+      .reduce((sum, t) => sum + t.cargoWeight, 0);
+
+    // Utilization rate: % of fleet currently assigned (on trip)
+    const utilizationRate = totalVehicles > 0
+      ? Math.round(((totalVehicles - activeVehicles) / totalVehicles) * 100)
+      : 0;
 
     // Get top drivers
     const topDrivers = await prisma.driver.findMany({
@@ -56,6 +67,11 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const vehicles = await prisma.vehicle.findMany();
     const avgFuelLevel = vehicles.length > 0 ? vehicles.reduce((sum, v) => sum + v.fuelLevel, 0) / vehicles.length : 0;
 
+    // Maintenance alerts
+    const overdueMaintenance = await prisma.vehicle.count({
+      where: { nextServiceDate: { lt: new Date() }, status: { not: 'RETIRED' } },
+    });
+
     res.json({
       success: true,
       data: {
@@ -68,7 +84,11 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
           totalTrips,
           completedTrips,
           inProgressTrips,
+          scheduledTrips,
           pendingMaintenance,
+          pendingCargo,
+          utilizationRate,
+          overdueMaintenance,
           totalDistance,
           totalFuelCost,
           avgTripDistance,

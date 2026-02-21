@@ -1,229 +1,206 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
-import { Card } from "@/components/ui/card";
-import { Activity, AlertTriangle, Fuel, Wrench, Loader } from "lucide-react";
+import { useEffect, useState } from "react";
 import { apiClient } from "@/services/api";
-
-interface DashboardStats {
-  kpis: {
-    totalVehicles: number;
-    activeVehicles: number;
-    vehiclesInMaintenance: number;
-    totalDrivers: number;
-    activeDrivers: number;
-    totalTrips: number;
-    completedTrips: number;
-    inProgressTrips: number;
-    pendingMaintenance: number;
-    totalDistance: number;
-    totalFuelCost: number;
-    avgTripDistance: number;
-    avgFuelLevel: number;
-  };
-  recentTrips: any[];
-  topDrivers: any[];
-}
+import { useAuth } from "@/lib/auth/AuthContext";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { TRIP_STATUS_COLORS, VEHICLE_STATUS_COLORS } from "@/lib/constants";
+import {
+  Truck, Users, MapPin, Wrench, Fuel, Gauge,
+  Package, AlertTriangle, Activity, TrendingUp,
+} from "lucide-react";
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { currentUser } = useAuth();
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetch = async () => {
       try {
-        const response = await apiClient.getDashboardStats();
-        setStats(response.data.data);
-        setError(null);
+        const res = await apiClient.getDashboardStats();
+        setData(res.data.data);
       } catch (err: any) {
-        console.error("[v0] Dashboard stats error:", err);
         setError(err.response?.data?.error || "Failed to load dashboard");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchStats();
+    fetch();
   }, []);
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-96">
-          <Loader className="w-8 h-8 text-blue-600 animate-spin" />
-        </div>
-      </AppLayout>
-    );
-  }
+  if (loading) return <AppLayout><div className="p-6 text-center text-muted-foreground">Loading dashboard...</div></AppLayout>;
+  if (error) return <AppLayout><div className="p-6 text-center text-red-500">{error}</div></AppLayout>;
 
-  if (error || !stats) {
-    return (
-      <AppLayout>
-        <Card className="p-6 bg-red-50 border border-red-200">
-          <p className="text-red-900 font-medium">{error || "Failed to load dashboard"}</p>
-        </Card>
-      </AppLayout>
-    );
-  }
-
-  const kpis = [
-    {
-      title: "Active Vehicles",
-      value: stats.kpis.activeVehicles.toString(),
-      icon: Activity,
-      color: "bg-green-500",
-      change: `${stats.kpis.totalVehicles} total`,
-    },
-    {
-      title: "In Progress Trips",
-      value: stats.kpis.inProgressTrips.toString(),
-      icon: Activity,
-      color: "bg-blue-500",
-      change: `${stats.kpis.completedTrips} completed`,
-    },
-    {
-      title: "Avg Fuel Level",
-      value: `${stats.kpis.avgFuelLevel}%`,
-      icon: Fuel,
-      color: "bg-yellow-500",
-      change: `${stats.kpis.totalFuelCost.toFixed(0)} L/week`,
-    },
-    {
-      title: "Maintenance Due",
-      value: stats.kpis.pendingMaintenance.toString(),
-      icon: Wrench,
-      color: "bg-red-500",
-      change: "Pending tasks",
-    },
-  ];
+  const k = data?.kpis;
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
+      <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back! Here's what's happening with your fleet.</p>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Welcome back, {currentUser?.name}. Here&apos;s your fleet overview.</p>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpis.map((kpi) => {
-            const Icon = kpi.icon;
-            return (
-              <Card key={kpi.title} className="p-6 hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">{kpi.title}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{kpi.value}</p>
-                    <p className="text-gray-500 text-xs mt-2">{kpi.change}</p>
-                  </div>
-                  <div className={`${kpi.color} p-3 rounded-lg`}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Fleet</p>
+                  <div className="text-3xl font-bold">{k?.totalVehicles || 0}</div>
+                  <p className="text-xs text-green-600">{k?.activeVehicles || 0} active</p>
                 </div>
-              </Card>
-            );
-          })}
+                <Truck className="w-10 h-10 text-blue-500 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Drivers</p>
+                  <div className="text-3xl font-bold">{k?.totalDrivers || 0}</div>
+                  <p className="text-xs text-green-600">{k?.activeDrivers || 0} available</p>
+                </div>
+                <Users className="w-10 h-10 text-green-500 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Trips</p>
+                  <div className="text-3xl font-bold">{k?.inProgressTrips || 0}</div>
+                  <p className="text-xs text-blue-600">{k?.scheduledTrips || 0} scheduled</p>
+                </div>
+                <MapPin className="w-10 h-10 text-orange-500 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Maintenance</p>
+                  <div className="text-3xl font-bold">{k?.vehiclesInMaintenance || 0}</div>
+                  <p className="text-xs text-yellow-600">{k?.pendingMaintenance || 0} pending</p>
+                </div>
+                <Wrench className="w-10 h-10 text-yellow-500 opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Content Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Secondary KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <Activity className="w-6 h-6 mx-auto mb-1 text-purple-500" />
+              <div className="text-xl font-bold">{k?.utilizationRate || 0}%</div>
+              <p className="text-xs text-muted-foreground">Utilization</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <Gauge className="w-6 h-6 mx-auto mb-1 text-blue-500" />
+              <div className="text-xl font-bold">{Math.round(k?.totalDistance || 0).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Total km</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <Fuel className="w-6 h-6 mx-auto mb-1 text-orange-500" />
+              <div className="text-xl font-bold">{k?.avgFuelLevel || 0}%</div>
+              <p className="text-xs text-muted-foreground">Avg Fuel</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <Package className="w-6 h-6 mx-auto mb-1 text-teal-500" />
+              <div className="text-xl font-bold">{Math.round(k?.pendingCargo || 0).toLocaleString()} kg</div>
+              <p className="text-xs text-muted-foreground">Pending Cargo</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <TrendingUp className="w-6 h-6 mx-auto mb-1 text-green-500" />
+              <div className="text-xl font-bold">{k?.completedTrips || 0}/{k?.totalTrips || 0}</div>
+              <p className="text-xs text-muted-foreground">Completed</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Alerts */}
+        {(k?.overdueMaintenance > 0 || k?.pendingMaintenance > 0) && (
+          <Card className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+            <CardContent className="pt-4 flex items-center gap-3">
+              <AlertTriangle className="w-6 h-6 text-yellow-600 shrink-0" />
+              <div>
+                <p className="font-medium text-yellow-700 dark:text-yellow-400">Maintenance Alerts</p>
+                <p className="text-sm text-yellow-600">
+                  {k?.overdueMaintenance > 0 && <span className="text-red-600 font-semibold">{k.overdueMaintenance} vehicles overdue for service. </span>}
+                  {k?.pendingMaintenance > 0 && <span>{k.pendingMaintenance} pending maintenance requests.</span>}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Trips */}
-          <Card className="lg:col-span-2 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Trips</h2>
-            <div className="space-y-4">
-              {stats.recentTrips && stats.recentTrips.length > 0 ? (
-                stats.recentTrips.slice(0, 5).map((trip) => (
-                  <div key={trip.id} className="flex items-center justify-between pb-4 border-b border-gray-200 last:border-b-0">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{trip.tripNumber}</p>
-                      <p className="text-sm text-gray-600">{trip.originAddress} → {trip.destAddress}</p>
+          <Card>
+            <CardHeader><CardTitle>Recent Trips</CardTitle></CardHeader>
+            <CardContent>
+              {data?.recentTrips?.length > 0 ? (
+                <div className="space-y-3">
+                  {data.recentTrips.slice(0, 6).map((t: any) => (
+                    <div key={t.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                      <div>
+                        <span className="font-mono text-xs text-muted-foreground">{t.tripNumber} </span>
+                        <span>{t.startLocation} → {t.endLocation}</span>
+                      </div>
+                      <Badge className={TRIP_STATUS_COLORS[t.status] || ""} >{t.status}</Badge>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-medium ${trip.status === 'COMPLETED' ? 'text-green-600' : trip.status === 'IN_PROGRESS' ? 'text-blue-600' : 'text-gray-600'}`}>
-                        {trip.status.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-xs text-gray-600">{trip.distance || '—'} km</p>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               ) : (
-                <p className="text-gray-600 text-sm">No recent trips</p>
+                <p className="text-muted-foreground text-sm">No trips yet</p>
               )}
-            </div>
+            </CardContent>
           </Card>
 
           {/* Top Drivers */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Activity className="w-5 h-5 text-blue-500 mr-2" />
-              Top Drivers
-            </h2>
-            <div className="space-y-3">
-              {stats.topDrivers && stats.topDrivers.length > 0 ? (
-                stats.topDrivers.slice(0, 3).map((driver) => (
-                  <div
-                    key={driver.id}
-                    className="p-3 bg-blue-50 border border-blue-200 rounded-lg"
-                  >
-                    <p className="text-sm font-medium text-blue-900">{driver.user?.name || driver.id}</p>
-                    <p className="text-xs text-blue-800">Rating: {driver.rating}/5 • {driver.totalTrips} trips</p>
-                  </div>
-                ))
+          <Card>
+            <CardHeader><CardTitle>Top Drivers</CardTitle></CardHeader>
+            <CardContent>
+              {data?.topDrivers?.length > 0 ? (
+                <div className="space-y-3">
+                  {data.topDrivers.map((d: any, i: number) => (
+                    <div key={d.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-muted-foreground w-5">#{i + 1}</span>
+                        <span>{d.user?.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">{d.totalTrips} trips</span>
+                        <Badge variant="outline">{d.rating}/5.0</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <p className="text-gray-600 text-sm">No drivers yet</p>
+                <p className="text-muted-foreground text-sm">No driver data</p>
               )}
-            </div>
-          </Card>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Fleet Status</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Active</span>
-                <span className="text-sm font-medium">{stats.kpis.activeVehicles} vehicles</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Maintenance</span>
-                <span className="text-sm font-medium">{stats.kpis.vehiclesInMaintenance} vehicles</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total</span>
-                <span className="text-sm font-medium">{stats.kpis.totalVehicles} vehicles</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-gray-200">
-                <span className="text-sm text-gray-600">Active Drivers</span>
-                <span className="text-sm font-medium">{stats.kpis.activeDrivers}/{stats.kpis.totalDrivers}</span>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4">Operations Summary</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Distance</span>
-                <span className="text-sm font-medium">{stats.kpis.totalDistance.toFixed(0)} km</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Avg Trip Distance</span>
-                <span className="text-sm font-medium">{stats.kpis.avgTripDistance.toFixed(0)} km</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Fuel Cost</span>
-                <span className="text-sm font-medium">${stats.kpis.totalFuelCost.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-gray-200">
-                <span className="text-sm text-gray-600">Completed Trips</span>
-                <span className="text-sm font-medium">{stats.kpis.completedTrips}/{stats.kpis.totalTrips}</span>
-              </div>
-            </div>
+            </CardContent>
           </Card>
         </div>
       </div>

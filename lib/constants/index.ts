@@ -10,25 +10,25 @@ import {
 } from "@/lib/types";
 
 // Role Definitions
-export const ROLES: UserRole[] = ["admin", "manager", "driver"];
+export const ROLES: UserRole[] = ["ADMIN", "MANAGER", "DRIVER"];
 
 // Role Labels
 export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: "Administrator",
-  manager: "Fleet Manager",
-  driver: "Driver",
+  ADMIN: "Administrator",
+  MANAGER: "Fleet Manager",
+  DRIVER: "Driver",
 };
 
 // Role Descriptions
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  admin: "Full system access and management",
-  manager: "Fleet and operations management",
-  driver: "Driver app and trip management",
+  ADMIN: "Full system access and management",
+  MANAGER: "Fleet and operations management",
+  DRIVER: "Driver app and trip management",
 };
 
 // Permissions Matrix
 export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
-  admin: {
+  ADMIN: {
     canViewDashboard: true,
     canViewVehicles: true,
     canEditVehicles: true,
@@ -45,7 +45,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canViewUsers: true,
     canManageUsers: true,
   },
-  manager: {
+  MANAGER: {
     canViewDashboard: true,
     canViewVehicles: true,
     canEditVehicles: false,
@@ -62,7 +62,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canViewUsers: false,
     canManageUsers: false,
   },
-  driver: {
+  DRIVER: {
     canViewDashboard: true,
     canViewVehicles: true,
     canEditVehicles: false,
@@ -83,33 +83,49 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
 
 // Vehicle Status Colors
 export const VEHICLE_STATUS_COLORS: Record<string, string> = {
+  ACTIVE: "bg-green-100 text-green-800 border-green-300",
   active: "bg-green-100 text-green-800 border-green-300",
+  INACTIVE: "bg-gray-100 text-gray-800 border-gray-300",
   inactive: "bg-gray-100 text-gray-800 border-gray-300",
+  MAINTENANCE: "bg-yellow-100 text-yellow-800 border-yellow-300",
   maintenance: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  RETIRED: "bg-red-100 text-red-800 border-red-300",
   retired: "bg-red-100 text-red-800 border-red-300",
 };
 
 // Driver Status Colors
 export const DRIVER_STATUS_COLORS: Record<string, string> = {
+  ACTIVE: "bg-green-100 text-green-800 border-green-300",
   active: "bg-green-100 text-green-800 border-green-300",
+  INACTIVE: "bg-gray-100 text-gray-800 border-gray-300",
   inactive: "bg-gray-100 text-gray-800 border-gray-300",
+  ON_LEAVE: "bg-blue-100 text-blue-800 border-blue-300",
   on_leave: "bg-blue-100 text-blue-800 border-blue-300",
+  SUSPENDED: "bg-red-100 text-red-800 border-red-300",
   suspended: "bg-red-100 text-red-800 border-red-300",
 };
 
 // Trip Status Colors
 export const TRIP_STATUS_COLORS: Record<string, string> = {
+  SCHEDULED: "bg-blue-100 text-blue-800 border-blue-300",
   scheduled: "bg-blue-100 text-blue-800 border-blue-300",
+  IN_PROGRESS: "bg-yellow-100 text-yellow-800 border-yellow-300",
   in_progress: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  COMPLETED: "bg-green-100 text-green-800 border-green-300",
   completed: "bg-green-100 text-green-800 border-green-300",
+  CANCELLED: "bg-red-100 text-red-800 border-red-300",
   cancelled: "bg-red-100 text-red-800 border-red-300",
 };
 
 // Maintenance Status Colors
 export const MAINTENANCE_STATUS_COLORS: Record<string, string> = {
+  PENDING: "bg-blue-100 text-blue-800 border-blue-300",
   scheduled: "bg-blue-100 text-blue-800 border-blue-300",
+  IN_PROGRESS: "bg-yellow-100 text-yellow-800 border-yellow-300",
   in_progress: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  COMPLETED: "bg-green-100 text-green-800 border-green-300",
   completed: "bg-green-100 text-green-800 border-green-300",
+  CANCELLED: "bg-red-100 text-red-800 border-red-300",
   cancelled: "bg-red-100 text-red-800 border-red-300",
 };
 

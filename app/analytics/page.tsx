@@ -1,147 +1,228 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { apiClient } from "@/services/api";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Card } from "@/components/ui/card";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { BarChart3, Download, Fuel, Gauge, DollarSign, TrendingUp } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const metrics = [
-    {
-      title: "Total Distance",
-      value: "45,230 km",
-      change: "+12.5%",
-      trend: "up",
-      description: "This month",
-    },
-    {
-      title: "Fuel Consumption",
-      value: "8,450 L",
-      change: "-3.2%",
-      trend: "down",
-      description: "This month",
-    },
-    {
-      title: "Operational Cost",
-      value: "$23,450",
-      change: "+2.1%",
-      trend: "up",
-      description: "This month",
-    },
-    {
-      title: "Average Efficiency",
-      value: "5.35 km/L",
-      change: "+1.8%",
-      trend: "up",
-      description: "This month",
-    },
-  ];
+  const { currentUser } = useAuth();
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState<"overview" | "vehicles" | "drivers" | "trends">("overview");
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await apiClient.getAnalytics();
+      setAnalytics(res.data.data);
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to load analytics");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchAnalytics(); }, []);
+
+  const handleExport = async (type: string) => {
+    try {
+      const res = await apiClient.exportReport(type);
+      const blob = new Blob([res.data], { type: "text/csv" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${type}-report-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to export report");
+    }
+  };
+
+  if (loading) return <AppLayout><div className="p-6 text-center text-muted-foreground">Loading analytics...</div></AppLayout>;
+  if (error) return <AppLayout><div className="p-6 text-center text-red-500">{error}</div></AppLayout>;
+
+  const data = analytics;
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics & Reports</h1>
-          <p className="text-gray-600 mt-2">Track and analyze your fleet performance metrics.</p>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Fleet Analytics</h1>
+            <p className="text-muted-foreground">Operational insights and reports</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => handleExport("vehicles")}>
+              <Download className="w-4 h-4 mr-2" />Vehicles CSV
+            </Button>
+            <Button variant="outline" onClick={() => handleExport("drivers")}>
+              <Download className="w-4 h-4 mr-2" />Drivers CSV
+            </Button>
+            <Button variant="outline" onClick={() => handleExport("trips")}>
+              <Download className="w-4 h-4 mr-2" />Trips CSV
+            </Button>
+          </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {metrics.map((metric) => (
-            <Card key={metric.title} className="p-6">
-              <p className="text-gray-600 text-sm font-medium mb-2">{metric.title}</p>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-gray-900">{metric.value}</p>
-                  <p className="text-xs text-gray-600 mt-1">{metric.description}</p>
-                </div>
-                <div className={`flex items-center ${metric.trend === "up" ? "text-green-600" : "text-red-600"}`}>
-                  {metric.trend === "up" ? (
-                    <TrendingUp className="w-5 h-5 mr-1" />
-                  ) : (
-                    <TrendingDown className="w-5 h-5 mr-1" />
-                  )}
-                  <span className="text-sm font-semibold">{metric.change}</span>
-                </div>
-              </div>
-            </Card>
+        {/* Tabs */}
+        <div className="flex gap-2 border-b pb-2">
+          {(["overview", "vehicles", "drivers", "trends"] as const).map((t) => (
+            <Button key={t} variant={tab === t ? "default" : "ghost"} size="sm" onClick={() => setTab(t)}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </Button>
           ))}
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Fuel Usage */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Fuel Usage Trend</h3>
-            <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-              <p className="text-gray-600">Chart visualization here</p>
+        {tab === "overview" && data && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <Gauge className="w-8 h-8 mx-auto mb-2 text-blue-600" />
+                  <div className="text-2xl font-bold">{data.overview?.totalDistance?.toLocaleString() || 0} km</div>
+                  <p className="text-sm text-muted-foreground">Total Distance</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <Fuel className="w-8 h-8 mx-auto mb-2 text-orange-600" />
+                  <div className="text-2xl font-bold">{data.overview?.totalFuel?.toLocaleString() || 0} L</div>
+                  <p className="text-sm text-muted-foreground">Total Fuel</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <TrendingUp className="w-8 h-8 mx-auto mb-2 text-green-600" />
+                  <div className="text-2xl font-bold">{data.overview?.fuelEfficiency?.toFixed(1) || 0} km/L</div>
+                  <p className="text-sm text-muted-foreground">Fuel Efficiency</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                  <div className="text-2xl font-bold">${data.overview?.costPerKm?.toFixed(2) || 0}</div>
+                  <p className="text-sm text-muted-foreground">Cost per km</p>
+                </CardContent>
+              </Card>
             </div>
-          </Card>
 
-          {/* Distance Trend */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Distance Trend</h3>
-            <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-              <p className="text-gray-600">Chart visualization here</p>
+            <div className="grid grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <div className="text-3xl font-bold">{data.overview?.totalTrips || 0}</div>
+                  <p className="text-sm text-muted-foreground">Total Trips</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <div className="text-3xl font-bold">{data.overview?.completedTrips || 0}</div>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <div className="text-3xl font-bold">${data.overview?.totalMaintenanceCost?.toLocaleString() || 0}</div>
+                  <p className="text-sm text-muted-foreground">Maintenance Costs</p>
+                </CardContent>
+              </Card>
             </div>
-          </Card>
-        </div>
-
-        {/* Performance Tables */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Drivers */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Performing Drivers</h3>
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center justify-between pb-3 border-b border-gray-200 last:border-b-0">
-                  <div>
-                    <p className="font-medium text-gray-900">Driver {i}</p>
-                    <p className="text-xs text-gray-600">145 trips this month</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">4.8★</p>
-                    <p className="text-xs text-gray-600">3,450 km</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Top Vehicles */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Active Vehicles</h3>
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center justify-between pb-3 border-b border-gray-200 last:border-b-0">
-                  <div>
-                    <p className="font-medium text-gray-900">VEH-{String(i).padStart(3, "0")}</p>
-                    <p className="text-xs text-gray-600">24 trips this month</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">98%</p>
-                    <p className="text-xs text-gray-600">Uptime</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Export Options */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Export Reports</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {["Daily Report", "Weekly Report", "Monthly Report", "Custom Range"].map((report) => (
-              <button
-                key={report}
-                className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-center"
-              >
-                <p className="text-sm font-medium text-gray-700">{report}</p>
-              </button>
-            ))}
           </div>
-        </Card>
+        )}
+
+        {tab === "vehicles" && data?.vehicleMetrics && (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50"><tr>
+                <th className="text-left p-3">Vehicle</th>
+                <th className="text-left p-3">Trips</th>
+                <th className="text-right p-3">Distance (km)</th>
+                <th className="text-right p-3">Fuel (L)</th>
+                <th className="text-right p-3">Efficiency (km/L)</th>
+                <th className="text-right p-3">Maint. Cost</th>
+                <th className="text-right p-3">Operational Cost</th>
+              </tr></thead>
+              <tbody>
+                {data.vehicleMetrics.map((v: any) => (
+                  <tr key={v.vehicleId} className="border-t">
+                    <td className="p-3 font-medium">{v.plateNumber}</td>
+                    <td className="p-3">{v.totalTrips}</td>
+                    <td className="p-3 text-right">{v.totalDistance?.toLocaleString()}</td>
+                    <td className="p-3 text-right">{v.totalFuel?.toLocaleString()}</td>
+                    <td className="p-3 text-right">{v.fuelEfficiency?.toFixed(1)}</td>
+                    <td className="p-3 text-right">${v.maintenanceCost?.toLocaleString()}</td>
+                    <td className="p-3 text-right font-medium">${v.operationalCost?.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {data.vehicleMetrics.length === 0 && <div className="text-center py-8 text-muted-foreground">No vehicle data available</div>}
+          </div>
+        )}
+
+        {tab === "drivers" && data?.driverMetrics && (
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50"><tr>
+                <th className="text-left p-3">Driver</th>
+                <th className="text-left p-3">Status</th>
+                <th className="text-right p-3">Completed</th>
+                <th className="text-right p-3">Distance (km)</th>
+                <th className="text-right p-3">Fuel (L)</th>
+                <th className="text-right p-3">Efficiency (km/L)</th>
+                <th className="text-right p-3">Rating</th>
+              </tr></thead>
+              <tbody>
+                {data.driverMetrics.map((d: any) => (
+                  <tr key={d.driverId} className="border-t">
+                    <td className="p-3 font-medium">{d.name}</td>
+                    <td className="p-3"><Badge variant="outline">{d.status}</Badge></td>
+                    <td className="p-3 text-right">{d.completedTrips}</td>
+                    <td className="p-3 text-right">{d.totalDistance?.toLocaleString()}</td>
+                    <td className="p-3 text-right">{d.totalFuel?.toLocaleString()}</td>
+                    <td className="p-3 text-right">{d.fuelEfficiency?.toFixed(1)}</td>
+                    <td className="p-3 text-right">{d.rating}/5.0</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {data.driverMetrics.length === 0 && <div className="text-center py-8 text-muted-foreground">No driver data available</div>}
+          </div>
+        )}
+
+        {tab === "trends" && data?.monthlyTrends && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Monthly Trends (Last 6 Months)</h3>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50"><tr>
+                  <th className="text-left p-3">Month</th>
+                  <th className="text-right p-3">Trips</th>
+                  <th className="text-right p-3">Distance (km)</th>
+                  <th className="text-right p-3">Fuel (L)</th>
+                  <th className="text-right p-3">Fuel Cost</th>
+                </tr></thead>
+                <tbody>
+                  {data.monthlyTrends.map((m: any, i: number) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-3 font-medium">{m.month}</td>
+                      <td className="p-3 text-right">{m.trips}</td>
+                      <td className="p-3 text-right">{m.distance?.toLocaleString()}</td>
+                      <td className="p-3 text-right">{m.fuel?.toLocaleString()}</td>
+                      <td className="p-3 text-right">${m.fuelCost?.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {data.monthlyTrends.length === 0 && <div className="text-center py-8 text-muted-foreground">No trend data available</div>}
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

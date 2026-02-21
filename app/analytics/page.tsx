@@ -92,7 +92,7 @@ export default function AnalyticsPage() {
               <Card>
                 <CardContent className="pt-4 text-center">
                   <Fuel className="w-8 h-8 mx-auto mb-2 text-orange-600" />
-                  <div className="text-2xl font-bold">{data.overview?.totalFuel?.toLocaleString() || 0} L</div>
+                  <div className="text-2xl font-bold">{data.overview?.totalFuelUsed?.toLocaleString() || 0} L</div>
                   <p className="text-sm text-muted-foreground">Total Fuel</p>
                 </CardContent>
               </Card>
@@ -132,6 +132,22 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Card className="border-red-200 dark:border-red-800">
+                <CardContent className="pt-4 text-center">
+                  <DollarSign className="w-8 h-8 mx-auto mb-2 text-red-600" />
+                  <div className="text-2xl font-bold text-red-600">${data.overview?.totalOperationalCost?.toLocaleString() || 0}</div>
+                  <p className="text-sm text-muted-foreground">Total Operational Cost (Fuel + Maintenance)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <BarChart3 className="w-8 h-8 mx-auto mb-2 text-teal-600" />
+                  <div className="text-2xl font-bold">${data.overview?.totalFuelCost?.toLocaleString() || 0}</div>
+                  <p className="text-sm text-muted-foreground">Total Fuel Cost</p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
 
@@ -145,7 +161,7 @@ export default function AnalyticsPage() {
                 <th className="text-right p-3">Fuel (L)</th>
                 <th className="text-right p-3">Efficiency (km/L)</th>
                 <th className="text-right p-3">Maint. Cost</th>
-                <th className="text-right p-3">Operational Cost</th>
+                <th className="text-right p-3">Total Op. Cost</th>
               </tr></thead>
               <tbody>
                 {data.vehicleMetrics.map((v: any) => (
@@ -153,10 +169,10 @@ export default function AnalyticsPage() {
                     <td className="p-3 font-medium">{v.plateNumber}</td>
                     <td className="p-3">{v.totalTrips}</td>
                     <td className="p-3 text-right">{v.totalDistance?.toLocaleString()}</td>
-                    <td className="p-3 text-right">{v.totalFuel?.toLocaleString()}</td>
+                    <td className="p-3 text-right">{v.totalFuelUsed?.toLocaleString()}</td>
                     <td className="p-3 text-right">{v.fuelEfficiency?.toFixed(1)}</td>
                     <td className="p-3 text-right">${v.maintenanceCost?.toLocaleString()}</td>
-                    <td className="p-3 text-right font-medium">${v.operationalCost?.toLocaleString()}</td>
+                    <td className="p-3 text-right font-medium">${v.totalOperationalCost?.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -184,7 +200,7 @@ export default function AnalyticsPage() {
                     <td className="p-3"><Badge variant="outline">{d.status}</Badge></td>
                     <td className="p-3 text-right">{d.completedTrips}</td>
                     <td className="p-3 text-right">{d.totalDistance?.toLocaleString()}</td>
-                    <td className="p-3 text-right">{d.totalFuel?.toLocaleString()}</td>
+                    <td className="p-3 text-right">{d.totalFuelUsed?.toLocaleString()}</td>
                     <td className="p-3 text-right">{d.fuelEfficiency?.toFixed(1)}</td>
                     <td className="p-3 text-right">{d.rating}/5.0</td>
                   </tr>

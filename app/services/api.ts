@@ -164,6 +164,15 @@ class ApiClient {
     return this.client.get(`/analytics/export?type=${type}`, { responseType: 'blob' });
   }
 
+  // Profile endpoints
+  updateProfile(data: { name?: string; phone?: string; address?: string }) {
+    return this.client.patch('/auth/profile', data);
+  }
+
+  changePassword(data: { currentPassword: string; newPassword: string }) {
+    return this.client.post('/auth/change-password', data);
+  }
+
   // Dashboard endpoints
   getDashboardStats() {
     return this.client.get('/dashboard/stats');

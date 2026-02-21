@@ -3,135 +3,207 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Save } from "lucide-react";
-import { useState } from "react";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { Save, CheckCircle, RotateCcw } from "lucide-react";
+import { useState, useEffect } from "react";
+
+const DEFAULT_SETTINGS = {
+  companyName: "FleetFlow Inc.",
+  companyEmail: "",
+  companyPhone: "",
+  companyAddress: "",
+  timezone: "UTC",
+  currency: "USD",
+  distanceUnit: "km",
+  maintenanceInterval: "10000",
+  fuelAlertThreshold: "20",
+  speedLimitAlert: true,
+  emailNotifications: true,
+  maintenanceReminders: true,
+  tripAlerts: true,
+  licenseExpiryAlerts: true,
+};
 
 export default function SettingsPage() {
-  const [formData, setFormData] = useState({
-    companyName: "FleetFlow Inc.",
-    email: "admin@fleetflow.com",
-    phone: "+1-800-FLEET-01",
-    address: "123 Fleet Street, Transport City, TC 12345",
-    timezone: "UTC-5",
-    currency: "USD",
-    maintenanceInterval: "10000",
-    fuelAlertThreshold: "20",
-    speedLimitAlert: "enabled",
-  });
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "ADMIN";
+
+  const [formData, setFormData] = useState(DEFAULT_SETTINGS);
+  const [saved, setSaved] = useState(false);
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("fleetflow_settings");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setFormData((prev) => ({ ...prev, ...parsed }));
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, checked } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: checked }));
+  };
+
+  const handleSave = () => {
+    localStorage.setItem("fleetflow_settings", JSON.stringify(formData));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleReset = () => {
+    setFormData(DEFAULT_SETTINGS);
+    localStorage.removeItem("fleetflow_settings");
+    setSaved(false);
   };
 
   return (
     <AppLayout>
       <div className="space-y-6 max-w-4xl">
         {/* Page Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your system configuration and preferences.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+            <p className="text-gray-600 mt-2">Manage your system configuration and preferences.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleReset}>
+              <RotateCcw className="w-4 h-4 mr-2" /> Reset
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave}>
+              <Save className="w-4 h-4 mr-2" /> Save Changes
+            </Button>
+          </div>
         </div>
 
-        {/* Company Settings */}
+        {/* Save confirmation */}
+        {saved && (
+          <div className="p-4 rounded-lg flex items-center gap-2 bg-green-50 text-green-800 border border-green-200">
+            <CheckCircle className="w-5 h-5" />
+            Settings saved successfully!
+          </div>
+        )}
+
+        {/* Company Settings (Admin only) */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Company Information</h2>
+          {!isAdmin && (
+            <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg mb-4">
+              Only administrators can modify company settings.
+            </p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Company Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
               <input
                 type="text"
                 name="companyName"
                 value={formData.companyName}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!isAdmin}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Company Email</label>
               <input
                 type="email"
-                name="email"
-                value={formData.email}
+                name="companyEmail"
+                value={formData.companyEmail}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!isAdmin}
+                placeholder="company@example.com"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
               <input
                 type="tel"
-                name="phone"
-                value={formData.phone}
+                name="companyPhone"
+                value={formData.companyPhone}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!isAdmin}
+                placeholder="Enter company phone"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
               <input
                 type="text"
-                name="address"
-                value={formData.address}
+                name="companyAddress"
+                value={formData.companyAddress}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!isAdmin}
+                placeholder="Enter company address"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />
             </div>
           </div>
         </Card>
 
-        {/* System Settings */}
+        {/* System Preferences */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">System Preferences</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Timezone
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Timezone</label>
               <select
                 name="timezone"
                 value={formData.timezone}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option>UTC-8</option>
-                <option>UTC-5</option>
-                <option>UTC</option>
-                <option>UTC+1</option>
-                <option>UTC+8</option>
+                <option value="UTC-8">UTC-8 (Pacific)</option>
+                <option value="UTC-5">UTC-5 (Eastern)</option>
+                <option value="UTC">UTC</option>
+                <option value="UTC+1">UTC+1 (CET)</option>
+                <option value="UTC+5:30">UTC+5:30 (IST)</option>
+                <option value="UTC+8">UTC+8 (CST)</option>
+                <option value="UTC+9">UTC+9 (JST)</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Currency
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
               <select
                 name="currency"
                 value={formData.currency}
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option>USD</option>
-                <option>EUR</option>
-                <option>GBP</option>
-                <option>JPY</option>
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="JPY">JPY (¥)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Distance Unit</label>
+              <select
+                name="distanceUnit"
+                value={formData.distanceUnit}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="km">Kilometers (km)</option>
+                <option value="mi">Miles (mi)</option>
               </select>
             </div>
           </div>
         </Card>
 
-        {/* Fleet Settings */}
+        {/* Fleet Configuration */}
         <Card className="p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Fleet Configuration</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -146,6 +218,9 @@ export default function SettingsPage() {
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Vehicles will show maintenance alerts when mileage exceeds this interval
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -156,47 +231,66 @@ export default function SettingsPage() {
                 name="fuelAlertThreshold"
                 value={formData.fuelAlertThreshold}
                 onChange={handleInputChange}
+                min="5"
+                max="50"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Alert when vehicle fuel level drops below this percentage
+              </p>
             </div>
-          </div>
-
-          <div className="mt-6 flex items-center space-x-4">
-            <input
-              type="checkbox"
-              id="speedAlert"
-              defaultChecked
-              className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-            />
-            <label htmlFor="speedAlert" className="text-sm font-medium text-gray-700">
-              Enable Speed Limit Alerts
-            </label>
           </div>
         </Card>
 
-        {/* User Management */}
+        {/* Notification Preferences */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">User Management</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Notifications</h2>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900">Invite Team Members</p>
-                <p className="text-sm text-gray-600">Add new administrators, managers, or drivers</p>
+            {[
+              { name: "emailNotifications", label: "Email Notifications", desc: "Receive email alerts for important events" },
+              { name: "maintenanceReminders", label: "Maintenance Reminders", desc: "Get notified when vehicles are due for maintenance" },
+              { name: "tripAlerts", label: "Trip Alerts", desc: "Notifications for trip status changes and delays" },
+              { name: "licenseExpiryAlerts", label: "License Expiry Alerts", desc: "Warn when driver licenses are about to expire" },
+              { name: "speedLimitAlert", label: "Speed Limit Alerts", desc: "Alert when vehicles exceed speed limits" },
+            ].map((item) => (
+              <div key={item.name} className="flex items-center justify-between py-2">
+                <div>
+                  <p className="font-medium text-gray-900">{item.label}</p>
+                  <p className="text-sm text-gray-500">{item.desc}</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name={item.name}
+                    checked={(formData as any)[item.name]}
+                    onChange={handleCheckboxChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                Invite User
-              </Button>
-            </div>
+            ))}
           </div>
         </Card>
 
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8">
-            <Save className="w-4 h-4 mr-2" />
-            Save Changes
-          </Button>
-        </div>
+        {/* Current User Info */}
+        <Card className="p-6 bg-gray-50">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Session Info</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500">Logged in as:</span>
+              <p className="font-medium text-gray-900">{currentUser?.name}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Email:</span>
+              <p className="font-medium text-gray-900">{currentUser?.email}</p>
+            </div>
+            <div>
+              <span className="text-gray-500">Role:</span>
+              <p className="font-medium text-gray-900">{currentUser?.role}</p>
+            </div>
+          </div>
+        </Card>
       </div>
     </AppLayout>
   );

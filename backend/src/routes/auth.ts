@@ -10,5 +10,7 @@ router.post('/login', validateRequest(LoginSchema), authController.login);
 router.post('/register', validateRequest(RegisterSchema), authController.register);
 router.get('/me', authMiddleware, authController.getCurrentUser);
 router.post('/logout', authMiddleware, authController.logout);
+router.patch('/profile', authMiddleware, authController.updateProfile);
+router.post('/change-password', authMiddleware, authController.changePassword);
 
 export default router;

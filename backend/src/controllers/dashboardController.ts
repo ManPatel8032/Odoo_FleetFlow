@@ -72,6 +72,39 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       where: { nextServiceDate: { lt: new Date() }, status: { not: 'RETIRED' } },
     });
 
+    // License expiry alerts (Safety Officer view)
+    const expiringLicenses = await prisma.driver.findMany({
+      where: {
+        licenseExpiry: { lt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }, // within 30 days
+        status: { not: 'SUSPENDED' },
+      },
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { licenseExpiry: 'asc' },
+    });
+
+    // Financial summary (Financial Analyst view)
+    const totalFuelSpend = trips.reduce((sum, t) => sum + (t.fuelCost || 0), 0);
+    const maintenanceLogs = await prisma.maintenanceLog.findMany({
+      where: { status: 'COMPLETED' },
+      include: { vehicle: { select: { id: true, plateNumber: true } } },
+    });
+    const totalMaintenanceCost = maintenanceLogs.reduce((sum, m) => sum + m.cost, 0);
+    const totalOperationalCost = totalFuelSpend + totalMaintenanceCost;
+
+    // Per-vehicle operational cost (Fuel + Maintenance)
+    const vehicleCosts = vehicles.map(v => {
+      const vTrips = trips.filter(t => t.vehicleId === v.id);
+      const fuelCost = vTrips.reduce((s, t) => s + (t.fuelCost || 0), 0);
+      const maintCost = maintenanceLogs.filter(m => m.vehicleId === v.id).reduce((s, m) => s + m.cost, 0);
+      return {
+        vehicleId: v.id,
+        plateNumber: v.plateNumber,
+        fuelCost,
+        maintenanceCost: maintCost,
+        totalCost: fuelCost + maintCost,
+      };
+    });
+
     res.json({
       success: true,
       data: {
@@ -93,9 +126,14 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
           totalFuelCost,
           avgTripDistance,
           avgFuelLevel: Math.round(avgFuelLevel),
+          totalFuelSpend,
+          totalMaintenanceCost,
+          totalOperationalCost,
         },
         topDrivers,
         recentTrips,
+        expiringLicenses,
+        vehicleCosts,
       },
     });
   } catch (error: any) {

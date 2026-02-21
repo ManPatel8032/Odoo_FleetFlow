@@ -10,6 +10,9 @@ export interface AuthUser {
   name: string;
   role: "ADMIN" | "MANAGER" | "DRIVER";
   avatar?: string;
+  phone?: string;
+  address?: string;
+  createdAt?: string;
 }
 
 export interface AuthContextType {
@@ -22,6 +25,7 @@ export interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   hasPermission: (requiredRoles: string[]) => boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -143,6 +147,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return requiredRoles.includes(currentUser.role);
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await apiClient.getCurrentUser();
+      const user = response.data.data;
+      setCurrentUser(user);
+      localStorage.setItem("user", JSON.stringify(user));
+    } catch (err) {
+      console.error("Failed to refresh user:", err);
+    }
+  };
+
   const value: AuthContextType = {
     currentUser,
     token,
@@ -153,6 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     hasPermission,
+    refreshUser,
   };
 
   if (isLoading) {

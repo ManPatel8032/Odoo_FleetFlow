@@ -10,6 +10,7 @@ import { TRIP_STATUS_COLORS, VEHICLE_STATUS_COLORS } from "@/lib/constants";
 import {
   Truck, Users, MapPin, Wrench, Fuel, Gauge,
   Package, AlertTriangle, Activity, TrendingUp,
+  Shield, DollarSign, Clock,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -166,7 +167,7 @@ export default function DashboardPage() {
                     <div key={t.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
                       <div>
                         <span className="font-mono text-xs text-muted-foreground">{t.tripNumber} </span>
-                        <span>{t.startLocation} → {t.endLocation}</span>
+                        <span>{t.originAddress} → {t.destAddress}</span>
                       </div>
                       <Badge className={TRIP_STATUS_COLORS[t.status] || ""} >{t.status}</Badge>
                     </div>
@@ -203,6 +204,99 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Safety Officer View - License Expiry Alerts */}
+        {(currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER") && data?.expiringLicenses?.length > 0 && (
+          <Card className="border-red-400 bg-red-50 dark:bg-red-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <Shield className="w-5 h-5" />Driver Compliance Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {data.expiringLicenses.map((d: any) => {
+                  const isExpired = new Date(d.licenseExpiry) < new Date();
+                  return (
+                    <div key={d.id} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{d.user?.name}</span>
+                        <span className="text-xs text-muted-foreground">({d.licenseNumber})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3" />
+                        <span className={isExpired ? "text-red-600 font-semibold" : "text-yellow-600"}>
+                          {isExpired ? "EXPIRED" : "Expires"} {new Date(d.licenseExpiry).toLocaleDateString()}
+                        </span>
+                        {isExpired && <Badge variant="destructive">Blocked</Badge>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Drivers with expired licenses are automatically blocked from trip assignment.</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Financial Analyst View - Operational Costs */}
+        {(currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER") && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2"><DollarSign className="w-5 h-5" />Financial Overview</h2>
+            <div className="grid grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <Fuel className="w-6 h-6 mx-auto mb-1 text-orange-500" />
+                  <div className="text-xl font-bold">${(k?.totalFuelSpend || 0).toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">Total Fuel Spend</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <Wrench className="w-6 h-6 mx-auto mb-1 text-yellow-500" />
+                  <div className="text-xl font-bold">${(k?.totalMaintenanceCost || 0).toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">Total Maintenance Cost</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 text-center">
+                  <DollarSign className="w-6 h-6 mx-auto mb-1 text-red-500" />
+                  <div className="text-xl font-bold">${(k?.totalOperationalCost || 0).toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">Total Operational Cost</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Per-Vehicle Operational Cost */}
+            {data?.vehicleCosts?.length > 0 && (
+              <Card>
+                <CardHeader><CardTitle>Operational Cost per Vehicle (Fuel + Maintenance)</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50"><tr>
+                        <th className="text-left p-3">Vehicle</th>
+                        <th className="text-right p-3">Fuel Cost</th>
+                        <th className="text-right p-3">Maintenance Cost</th>
+                        <th className="text-right p-3 font-semibold">Total</th>
+                      </tr></thead>
+                      <tbody>
+                        {data.vehicleCosts.filter((v: any) => v.totalCost > 0).map((v: any) => (
+                          <tr key={v.vehicleId} className="border-t">
+                            <td className="p-3 font-medium">{v.plateNumber}</td>
+                            <td className="p-3 text-right">${v.fuelCost.toLocaleString()}</td>
+                            <td className="p-3 text-right">${v.maintenanceCost.toLocaleString()}</td>
+                            <td className="p-3 text-right font-semibold">${v.totalCost.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </AppLayout>
   );

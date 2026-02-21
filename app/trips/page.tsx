@@ -12,7 +12,7 @@ import { TRIP_STATUS_COLORS } from "@/lib/constants";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { MapPin, Plus, Search, Package, Play, CheckCircle, XCircle } from "lucide-react";
+import { MapPin, Plus, Search, Package, Play, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 
 export default function TripsPage() {
   const { currentUser } = useAuth();
@@ -25,10 +25,11 @@ export default function TripsPage() {
   const [selected, setSelected] = useState<any>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState("");
+  const [capacityWarning, setCapacityWarning] = useState("");
   const [form, setForm] = useState({
-    vehicleId: "", driverId: "", startLocation: "", endLocation: "",
-    scheduledStart: "", scheduledEnd: "", cargoWeight: "",
-    cargoDescription: "", notes: "",
+    vehicleId: "", driverId: "", originAddress: "", destAddress: "",
+    startTime: "", estimatedEndTime: "", cargoWeight: "",
+    notes: "",
   });
 
   const canEdit = currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER";
@@ -57,25 +58,56 @@ export default function TripsPage() {
     fetchFormData();
   }, []);
 
+  // Live cargo weight validation against vehicle capacity
+  const selectedVehicle = vehicles.find(v => v.id === form.vehicleId);
+  const validateCargo = (weight: string, vId?: string) => {
+    const vehicle = vehicles.find(v => v.id === (vId || form.vehicleId));
+    if (vehicle && weight && Number(weight) > vehicle.capacity) {
+      setCapacityWarning(`Cargo (${weight}kg) exceeds ${vehicle.plateNumber} max capacity (${vehicle.capacity}kg)!`);
+    } else {
+      setCapacityWarning("");
+    }
+  };
+
   const handleCreate = async () => {
     try {
       setError("");
+
+      // Find the driver model to get the userId (Trip.driverId references User.id)
+      const driverRecord = drivers.find(d => d.id === form.driverId);
+      if (!driverRecord) {
+        setError("Please select a driver");
+        return;
+      }
+
+      if (!form.vehicleId || !form.originAddress || !form.destAddress || !form.startTime || !form.cargoWeight) {
+        setError("Please fill all required fields (including cargo weight)");
+        return;
+      }
+
+      const weight = Number(form.cargoWeight);
+      if (selectedVehicle && weight > selectedVehicle.capacity) {
+        setError(`Cargo weight (${weight}kg) exceeds vehicle capacity (${selectedVehicle.capacity}kg).`);
+        return;
+      }
+
       const payload: any = {
         vehicleId: form.vehicleId,
-        driverId: form.driverId,
-        startLocation: form.startLocation,
-        endLocation: form.endLocation,
-        scheduledStart: new Date(form.scheduledStart).toISOString(),
-        scheduledEnd: new Date(form.scheduledEnd).toISOString(),
+        driverId: driverRecord.userId, // Trip expects User.id, not Driver.id
+        originAddress: form.originAddress,
+        destAddress: form.destAddress,
+        cargoWeight: weight,
+        startTime: new Date(form.startTime).toISOString(),
       };
-      if (form.cargoWeight) payload.cargoWeight = Number(form.cargoWeight);
-      if (form.cargoDescription) payload.cargoDescription = form.cargoDescription;
+      if (form.estimatedEndTime) payload.estimatedEndTime = new Date(form.estimatedEndTime).toISOString();
       if (form.notes) payload.notes = form.notes;
 
       await apiClient.createTrip(payload);
       setShowCreate(false);
-      setForm({ vehicleId: "", driverId: "", startLocation: "", endLocation: "", scheduledStart: "", scheduledEnd: "", cargoWeight: "", cargoDescription: "", notes: "" });
+      setForm({ vehicleId: "", driverId: "", originAddress: "", destAddress: "", startTime: "", estimatedEndTime: "", cargoWeight: "", notes: "" });
+      setCapacityWarning("");
       fetchTrips();
+      fetchFormData(); // refresh vehicle availability
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to create trip");
     }
@@ -84,16 +116,16 @@ export default function TripsPage() {
   const handleStatusChange = async (id: string, status: string) => {
     try {
       setError("");
-      const payload: any = { status };
+      const additionalData: any = {};
       if (status === "COMPLETED") {
-        const distance = prompt("Enter actual distance (km):");
         const fuel = prompt("Enter fuel consumed (liters):");
-        if (!distance || !fuel) return;
-        payload.actualDistance = Number(distance);
-        payload.fuelConsumed = Number(fuel);
+        if (!fuel) return;
+        additionalData.fuelUsed = Number(fuel);
       }
-      await apiClient.updateTrip(id, payload);
+      // Use the correct status update endpoint with lifecycle enforcement
+      await apiClient.updateTripStatus(id, status, Object.keys(additionalData).length > 0 ? additionalData : undefined);
       fetchTrips();
+      fetchFormData(); // refresh vehicle availability
       setSelected(null);
     } catch (err: any) {
       setError(err.response?.data?.error || "Failed to update trip");
@@ -103,8 +135,8 @@ export default function TripsPage() {
   const filtered = trips.filter((t) => {
     const matchSearch =
       (t.tripNumber || "").toLowerCase().includes(search.toLowerCase()) ||
-      t.startLocation.toLowerCase().includes(search.toLowerCase()) ||
-      t.endLocation.toLowerCase().includes(search.toLowerCase());
+      (t.originAddress || "").toLowerCase().includes(search.toLowerCase()) ||
+      (t.destAddress || "").toLowerCase().includes(search.toLowerCase());
     const matchStatus = !statusFilter || t.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -128,7 +160,7 @@ export default function TripsPage() {
             <p className="text-muted-foreground">Schedule and manage fleet trips</p>
           </div>
           {canEdit && (
-            <Dialog open={showCreate} onOpenChange={setShowCreate}>
+            <Dialog open={showCreate} onOpenChange={(open) => { setShowCreate(open); if (!open) { setCapacityWarning(""); setError(""); } }}>
               <DialogTrigger asChild>
                 <Button><Plus className="w-4 h-4 mr-2" />Schedule Trip</Button>
               </DialogTrigger>
@@ -136,39 +168,57 @@ export default function TripsPage() {
                 <DialogHeader><DialogTitle>Schedule New Trip</DialogTitle></DialogHeader>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground">Vehicle *</label>
+                    <label className="text-xs text-muted-foreground">Vehicle * (Active only)</label>
                     <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={form.vehicleId} onChange={(e) => setForm({ ...form, vehicleId: e.target.value })}>
+                      value={form.vehicleId} onChange={(e) => { setForm({ ...form, vehicleId: e.target.value }); validateCargo(form.cargoWeight, e.target.value); }}>
                       <option value="">Select vehicle...</option>
-                      {activeVehicles.map(v => <option key={v.id} value={v.id}>{v.plateNumber} - {v.make} {v.model}</option>)}
+                      {activeVehicles.map(v => <option key={v.id} value={v.id}>{v.plateNumber} - {v.make} {v.model} (Max: {v.capacity}kg)</option>)}
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground">Driver *</label>
+                    <label className="text-xs text-muted-foreground">Driver * (Active, valid license only)</label>
                     <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                       value={form.driverId} onChange={(e) => setForm({ ...form, driverId: e.target.value })}>
                       <option value="">Select driver...</option>
-                      {activeDrivers.map(d => <option key={d.id} value={d.id}>{d.user?.name} - {d.licenseNumber}</option>)}
+                      {activeDrivers.map(d => {
+                        const expired = new Date(d.licenseExpiry) < new Date();
+                        return <option key={d.id} value={d.id} disabled={expired}>
+                          {d.user?.name} - {d.licenseNumber} {expired ? "(LICENSE EXPIRED)" : ""}
+                        </option>;
+                      })}
                     </select>
                   </div>
-                  <Input placeholder="Start Location *" value={form.startLocation} onChange={(e) => setForm({ ...form, startLocation: e.target.value })} />
-                  <Input placeholder="End Location *" value={form.endLocation} onChange={(e) => setForm({ ...form, endLocation: e.target.value })} />
+                  <Input placeholder="Origin Address *" value={form.originAddress} onChange={(e) => setForm({ ...form, originAddress: e.target.value })} />
+                  <Input placeholder="Destination Address *" value={form.destAddress} onChange={(e) => setForm({ ...form, destAddress: e.target.value })} />
                   <div>
-                    <label className="text-xs text-muted-foreground">Scheduled Start *</label>
-                    <Input type="datetime-local" value={form.scheduledStart} onChange={(e) => setForm({ ...form, scheduledStart: e.target.value })} />
+                    <label className="text-xs text-muted-foreground">Start Time *</label>
+                    <Input type="datetime-local" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Scheduled End *</label>
-                    <Input type="datetime-local" value={form.scheduledEnd} onChange={(e) => setForm({ ...form, scheduledEnd: e.target.value })} />
+                    <label className="text-xs text-muted-foreground">Estimated End</label>
+                    <Input type="datetime-local" value={form.estimatedEndTime} onChange={(e) => setForm({ ...form, estimatedEndTime: e.target.value })} />
                   </div>
-                  <Input type="number" placeholder="Cargo Weight (kg)" value={form.cargoWeight} onChange={(e) => setForm({ ...form, cargoWeight: e.target.value })} />
-                  <Input placeholder="Cargo Description" value={form.cargoDescription} onChange={(e) => setForm({ ...form, cargoDescription: e.target.value })} />
                   <div className="col-span-2">
-                    <Input placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                    <label className="text-xs text-muted-foreground">Cargo Weight (kg) *</label>
+                    <Input type="number" placeholder="e.g. 450" value={form.cargoWeight}
+                      onChange={(e) => { setForm({ ...form, cargoWeight: e.target.value }); validateCargo(e.target.value); }} />
+                    {capacityWarning && (
+                      <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                        <AlertTriangle className="w-3 h-3" />{capacityWarning}
+                      </div>
+                    )}
+                    {selectedVehicle && form.cargoWeight && !capacityWarning && (
+                      <p className="text-xs text-green-600 mt-1">
+                        {form.cargoWeight}kg / {selectedVehicle.capacity}kg capacity — OK
+                      </p>
+                    )}
+                  </div>
+                  <div className="col-span-2">
+                    <Input placeholder="Notes (optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                   </div>
                 </div>
                 {error && showCreate && <p className="text-sm text-red-500">{error}</p>}
-                <Button onClick={handleCreate} className="w-full">Schedule Trip</Button>
+                <Button onClick={handleCreate} className="w-full" disabled={!!capacityWarning}>Schedule Trip</Button>
               </DialogContent>
             </Dialog>
           )}
@@ -217,13 +267,13 @@ export default function TripsPage() {
                       <tr key={t.id} className={`border-t cursor-pointer hover:bg-muted/30 ${selected?.id === t.id ? "bg-muted/50" : ""}`} onClick={() => setSelected(t)}>
                         <td className="p-3 font-mono font-medium">{t.tripNumber}</td>
                         <td className="p-3">
-                          <div className="flex items-center gap-1"><MapPin className="w-3 h-3 text-green-500" />{t.startLocation}</div>
-                          <div className="flex items-center gap-1"><MapPin className="w-3 h-3 text-red-500" />{t.endLocation}</div>
+                          <div className="flex items-center gap-1"><MapPin className="w-3 h-3 text-green-500" />{t.originAddress}</div>
+                          <div className="flex items-center gap-1"><MapPin className="w-3 h-3 text-red-500" />{t.destAddress}</div>
                         </td>
                         <td className="p-3">{t.vehicle?.plateNumber}</td>
-                        <td className="p-3">{t.driver?.user?.name}</td>
-                        <td className="p-3">{t.cargoWeight ? <span className="flex items-center gap-1"><Package className="w-3 h-3" />{t.cargoWeight} kg</span> : "—"}</td>
-                        <td className="p-3 text-xs">{new Date(t.scheduledStart).toLocaleDateString()}</td>
+                        <td className="p-3">{t.driver?.name}</td>
+                        <td className="p-3"><span className="flex items-center gap-1"><Package className="w-3 h-3" />{t.cargoWeight} kg</span></td>
+                        <td className="p-3 text-xs">{new Date(t.startTime).toLocaleDateString()}</td>
                         <td className="p-3"><Badge className={TRIP_STATUS_COLORS[t.status] || ""}>{t.status}</Badge></td>
                       </tr>
                     ))}
@@ -237,24 +287,27 @@ export default function TripsPage() {
             <Card className="w-80 shrink-0">
               <CardHeader><CardTitle className="font-mono">{selected.tripNumber}</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div><span className="text-muted-foreground">From:</span> {selected.startLocation}</div>
-                <div><span className="text-muted-foreground">To:</span> {selected.endLocation}</div>
-                <div><span className="text-muted-foreground">Vehicle:</span> {selected.vehicle?.plateNumber}</div>
-                <div><span className="text-muted-foreground">Driver:</span> {selected.driver?.user?.name}</div>
-                <div><span className="text-muted-foreground">Scheduled:</span> {new Date(selected.scheduledStart).toLocaleString()} → {new Date(selected.scheduledEnd).toLocaleString()}</div>
-                {selected.cargoWeight && <div><span className="text-muted-foreground">Cargo:</span> {selected.cargoWeight} kg — {selected.cargoDescription || ""}</div>}
-                {selected.actualDistance && <div><span className="text-muted-foreground">Distance:</span> {selected.actualDistance} km</div>}
-                {selected.fuelConsumed && <div><span className="text-muted-foreground">Fuel:</span> {selected.fuelConsumed} L</div>}
-                {selected.fuelCost && <div><span className="text-muted-foreground">Fuel Cost:</span> ${selected.fuelCost}</div>}
+                <div><span className="text-muted-foreground">From:</span> {selected.originAddress}</div>
+                <div><span className="text-muted-foreground">To:</span> {selected.destAddress}</div>
+                <div><span className="text-muted-foreground">Vehicle:</span> {selected.vehicle?.plateNumber} ({selected.vehicle?.capacity}kg max)</div>
+                <div><span className="text-muted-foreground">Driver:</span> {selected.driver?.name}</div>
+                <div><span className="text-muted-foreground">Start:</span> {new Date(selected.startTime).toLocaleString()}</div>
+                {selected.estimatedEndTime && <div><span className="text-muted-foreground">Est. End:</span> {new Date(selected.estimatedEndTime).toLocaleString()}</div>}
+                {selected.actualEndTime && <div><span className="text-muted-foreground">Completed:</span> {new Date(selected.actualEndTime).toLocaleString()}</div>}
+                <div><span className="text-muted-foreground">Cargo:</span> {selected.cargoWeight} kg</div>
+                {selected.distance != null && <div><span className="text-muted-foreground">Distance:</span> {selected.distance} km</div>}
+                {selected.fuelUsed != null && <div><span className="text-muted-foreground">Fuel Used:</span> {selected.fuelUsed} L</div>}
+                {selected.fuelCost != null && <div><span className="text-muted-foreground">Fuel Cost:</span> ${selected.fuelCost}</div>}
+                {selected.totalCost != null && <div><span className="text-muted-foreground">Total Cost:</span> ${selected.totalCost}</div>}
                 <Badge className={TRIP_STATUS_COLORS[selected.status] || ""}>{selected.status}</Badge>
                 {canEdit && (
                   <div className="pt-3 space-y-2 border-t">
-                    <p className="text-xs font-medium text-muted-foreground">Actions:</p>
+                    <p className="text-xs font-medium text-muted-foreground">Lifecycle:</p>
                     <div className="flex flex-col gap-1">
                       {selected.status === "SCHEDULED" && (
                         <>
                           <Button size="sm" onClick={() => handleStatusChange(selected.id, "IN_PROGRESS")}>
-                            <Play className="w-3 h-3 mr-1" />Start Trip
+                            <Play className="w-3 h-3 mr-1" />Dispatch (Start Trip)
                           </Button>
                           <Button size="sm" variant="destructive" onClick={() => handleStatusChange(selected.id, "CANCELLED")}>
                             <XCircle className="w-3 h-3 mr-1" />Cancel

@@ -25,8 +25,8 @@ export default function MaintenancePage() {
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    vehicleId: "", type: "ROUTINE", description: "", cost: "",
-    scheduledDate: "", notes: "",
+    vehicleId: "", issueType: "ROUTINE", description: "", cost: "",
+    dueDate: "",
   });
 
   const canEdit = currentUser?.role === "ADMIN" || currentUser?.role === "MANAGER";
@@ -57,16 +57,19 @@ export default function MaintenancePage() {
   const handleCreate = async () => {
     try {
       setError("");
+      if (!form.vehicleId || !form.description || !form.cost || !form.dueDate) {
+        setError("Please fill all required fields (Vehicle, Description, Cost, Due Date)");
+        return;
+      }
       await apiClient.createMaintenance({
         vehicleId: form.vehicleId,
-        type: form.type,
+        issueType: form.issueType,
         description: form.description,
-        cost: form.cost ? Number(form.cost) : undefined,
-        scheduledDate: form.scheduledDate ? new Date(form.scheduledDate).toISOString() : undefined,
-        notes: form.notes || undefined,
+        cost: Number(form.cost),
+        dueDate: new Date(form.dueDate).toISOString(),
       });
       setShowCreate(false);
-      setForm({ vehicleId: "", type: "ROUTINE", description: "", cost: "", scheduledDate: "", notes: "" });
+      setForm({ vehicleId: "", issueType: "ROUTINE", description: "", cost: "", dueDate: "" });
       fetchLogs();
       fetchVehicles();
     } catch (err: any) {
@@ -107,7 +110,7 @@ export default function MaintenancePage() {
     const matchSearch =
       m.description?.toLowerCase().includes(search.toLowerCase()) ||
       m.vehicle?.plateNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      m.type?.toLowerCase().includes(search.toLowerCase());
+      m.issueType?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = !statusFilter || m.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -144,9 +147,9 @@ export default function MaintenancePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Type *</label>
+                    <label className="text-xs text-muted-foreground">Issue Type *</label>
                     <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                      value={form.issueType} onChange={(e) => setForm({ ...form, issueType: e.target.value })}>
                       <option value="ROUTINE">Routine</option>
                       <option value="REPAIR">Repair</option>
                       <option value="INSPECTION">Inspection</option>
@@ -154,12 +157,14 @@ export default function MaintenancePage() {
                     </select>
                   </div>
                   <Input placeholder="Description *" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                  <Input type="number" step="0.01" placeholder="Estimated Cost ($)" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
                   <div>
-                    <label className="text-xs text-muted-foreground">Scheduled Date</label>
-                    <Input type="date" value={form.scheduledDate} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} />
+                    <label className="text-xs text-muted-foreground">Cost ($) *</label>
+                    <Input type="number" step="0.01" placeholder="e.g. 250.00" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} />
                   </div>
-                  <Input placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                  <div>
+                    <label className="text-xs text-muted-foreground">Due Date *</label>
+                    <Input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
+                  </div>
                 </div>
                 {error && showCreate && <p className="text-sm text-red-500">{error}</p>}
                 <Button onClick={handleCreate} className="w-full">Create Maintenance Log</Button>
@@ -209,10 +214,10 @@ export default function MaintenancePage() {
                     {filtered.map((m) => (
                       <tr key={m.id} className={`border-t cursor-pointer hover:bg-muted/30 ${selected?.id === m.id ? "bg-muted/50" : ""}`} onClick={() => setSelected(m)}>
                         <td className="p-3 font-medium">{m.vehicle?.plateNumber}</td>
-                        <td className="p-3"><Badge variant="outline">{m.type}</Badge></td>
+                        <td className="p-3"><Badge variant="outline">{m.issueType}</Badge></td>
                         <td className="p-3 max-w-48 truncate">{m.description}</td>
                         <td className="p-3">{m.cost ? `$${m.cost.toLocaleString()}` : "—"}</td>
-                        <td className="p-3 text-xs flex items-center gap-1"><Calendar className="w-3 h-3" />{m.scheduledDate ? new Date(m.scheduledDate).toLocaleDateString() : "—"}</td>
+                        <td className="p-3 text-xs flex items-center gap-1"><Calendar className="w-3 h-3" />{m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}</td>
                         <td className="p-3"><Badge className={MAINTENANCE_STATUS_COLORS[m.status] || ""}>{m.status}</Badge></td>
                       </tr>
                     ))}
@@ -226,12 +231,11 @@ export default function MaintenancePage() {
             <Card className="w-80 shrink-0">
               <CardHeader><CardTitle className="flex items-center gap-2"><Wrench className="w-5 h-5" />{selected.vehicle?.plateNumber}</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <div><span className="text-muted-foreground">Type:</span> {selected.type}</div>
+                <div><span className="text-muted-foreground">Type:</span> {selected.issueType}</div>
                 <div><span className="text-muted-foreground">Description:</span> {selected.description}</div>
                 <div><span className="text-muted-foreground">Cost:</span> {selected.cost ? `$${selected.cost}` : "—"}</div>
-                <div><span className="text-muted-foreground">Scheduled:</span> {selected.scheduledDate ? new Date(selected.scheduledDate).toLocaleDateString() : "—"}</div>
+                <div><span className="text-muted-foreground">Due Date:</span> {selected.dueDate ? new Date(selected.dueDate).toLocaleDateString() : "—"}</div>
                 {selected.completedDate && <div><span className="text-muted-foreground">Completed:</span> {new Date(selected.completedDate).toLocaleDateString()}</div>}
-                {selected.notes && <div><span className="text-muted-foreground">Notes:</span> {selected.notes}</div>}
                 <Badge className={MAINTENANCE_STATUS_COLORS[selected.status] || ""}>{selected.status}</Badge>
                 {canEdit && (
                   <div className="pt-3 space-y-2 border-t">

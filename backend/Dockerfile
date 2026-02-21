@@ -2,17 +2,19 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
-
-# Install dependencies
+# Copy package files and install dependencies
+COPY package.json ./
 RUN npm install
 
-# Copy source code
+# Copy prisma schema and generate client
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# Copy source code (includes validation schemas)
 COPY src ./src
 
 # Expose port
 EXPOSE 5000
 
-# Start server
-CMD ["npm", "start"]
+# Start server using tsx (TypeScript runner)
+CMD ["npx", "tsx", "src/index.ts"]

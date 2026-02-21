@@ -2,10 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
 
-import authRoutes from '@/routes/auth';
-import vehicleRoutes from '@/routes/vehicles';
-import tripRoutes from '@/routes/trips';
-import dashboardRoutes from '@/routes/dashboard';
+import authRoutes from './routes/auth';
+import vehicleRoutes from './routes/vehicles';
+import tripRoutes from './routes/trips';
+import dashboardRoutes from './routes/dashboard';
 
 const app = express();
 const PORT = process.env.PORT || 5000;

@@ -39,7 +39,7 @@ export const CreateDriverSchema = z.object({
 });
 
 // Trip Schemas
-export const CreateTripSchema = z.object({
+const TripBaseSchema = z.object({
   vehicleId: z.string(),
   driverId: z.string(),
   originAddress: z.string(),
@@ -48,7 +48,9 @@ export const CreateTripSchema = z.object({
   startTime: z.coerce.date(),
   estimatedEndTime: z.coerce.date().optional(),
   notes: z.string().optional(),
-}).refine(
+});
+
+export const CreateTripSchema = TripBaseSchema.refine(
   () => {
     // Weight validation: no trip should exceed vehicle capacity
     // This will be checked in the controller with actual vehicle data
@@ -57,7 +59,7 @@ export const CreateTripSchema = z.object({
   { message: 'Cargo weight validation failed' }
 );
 
-export const UpdateTripSchema = CreateTripSchema.partial();
+export const UpdateTripSchema = TripBaseSchema.partial();
 
 export const TripStatusUpdateSchema = z.object({
   status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']),

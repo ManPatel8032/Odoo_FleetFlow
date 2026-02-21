@@ -30,11 +30,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Login failed');
+      }
+      const result = await response.json();
+      const data = result.data || result;
       localStorage.setItem('token', data.token);
       setUser(data.user);
     } catch (error) {
       console.error('Login failed:', error);
+      throw error;
     }
   };
 

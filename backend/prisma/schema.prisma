@@ -47,7 +47,6 @@ model Driver {
 
   // Relations
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  trips         Trip[]
   assignedVehicles VehicleAssignment[]
 
   @@index([licenseNumber])

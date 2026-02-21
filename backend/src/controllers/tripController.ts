@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '@/middleware/auth';
-import { CreateTripSchema, UpdateTripSchema, TripStatusUpdateSchema } from '../../../shared/validation/schemas';
+import { AuthRequest } from '../middleware/auth';
+import { CreateTripSchema, UpdateTripSchema, TripStatusUpdateSchema } from '../validation/schemas';
 
 const prisma = new PrismaClient();
 
@@ -23,7 +23,7 @@ export const getTrips = async (req: AuthRequest, res: Response) => {
 
     const trips = await prisma.trip.findMany({
       where: {
-        ...(status && { status: status as string }),
+        ...(status && { status: status as any }),
         ...(driverId && { driverId: driverId as string }),
       },
       include: {

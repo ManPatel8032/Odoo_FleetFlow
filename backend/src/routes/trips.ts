@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import * as tripController from '@/controllers/tripController';
-import { authMiddleware, requireRole } from '@/middleware/auth';
-import { validateRequest } from '@/middleware/validation';
-import { CreateTripSchema, UpdateTripSchema, TripStatusUpdateSchema } from '../../../shared/validation/schemas';
+import * as tripController from '../controllers/tripController';
+import { authMiddleware, requireRole } from '../middleware/auth';
+import { validateRequest } from '../middleware/validation';
+import { CreateTripSchema, UpdateTripSchema, TripStatusUpdateSchema } from '../validation/schemas';
 
 const router = Router();
 

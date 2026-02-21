@@ -1,8 +1,8 @@
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '@/middleware/auth';
-import { generateToken, hashPassword, comparePassword } from '@/utils';
-import { LoginSchema, RegisterSchema } from '../../../shared/validation/schemas';
+import { AuthRequest } from '../middleware/auth';
+import { generateToken, hashPassword, comparePassword } from '../utils';
+import { LoginSchema, RegisterSchema } from '../validation/schemas';
 
 const prisma = new PrismaClient();
 

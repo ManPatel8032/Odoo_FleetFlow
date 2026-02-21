@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { AuthRequest } from '@/middleware/auth';
-import { CreateVehicleSchema, UpdateVehicleSchema } from '../../../shared/validation/schemas';
+import { AuthRequest } from '../middleware/auth';
+import { CreateVehicleSchema, UpdateVehicleSchema } from '../validation/schemas';
 
 const prisma = new PrismaClient();
 

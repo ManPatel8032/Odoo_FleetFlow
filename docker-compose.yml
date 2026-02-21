@@ -49,7 +49,7 @@ services:
       - fleetflow_network
     volumes:
       - ./backend/src:/app/src
-    command: npm run dev
+    command: npx tsx watch src/index.ts
 
   frontend:
     build: ./frontend

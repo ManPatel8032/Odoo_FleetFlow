@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import * as vehicleController from '@/controllers/vehicleController';
-import { authMiddleware, requireRole } from '@/middleware/auth';
-import { validateRequest } from '@/middleware/validation';
-import { CreateVehicleSchema, UpdateVehicleSchema } from '../../../shared/validation/schemas';
+import * as vehicleController from '../controllers/vehicleController';
+import { authMiddleware, requireRole } from '../middleware/auth';
+import { validateRequest } from '../middleware/validation';
+import { CreateVehicleSchema, UpdateVehicleSchema } from '../validation/schemas';
 
 const router = Router();
 
